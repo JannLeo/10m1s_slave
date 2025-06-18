@@ -1,0 +1,314 @@
+commit a4a035f82cf0813854ce2d244f391b14a8cd2898
+Author: JunnanLiu <1144097453@qq.com>
+Date:   Fri Jun 13 16:03:53 2025 +0800
+
+    1603
+
+diff --git a/tl_ble_sdk-4.0.4.3_Patch_0001/tl_ble_sdk/vendor/acl_connection_demo/app.c b/tl_ble_sdk-4.0.4.3_Patch_0001/tl_ble_sdk/vendor/acl_connection_demo/app.c
+index ef1719ce9..8c59b224b 100644
+--- a/tl_ble_sdk-4.0.4.3_Patch_0001/tl_ble_sdk/vendor/acl_connection_demo/app.c
++++ b/tl_ble_sdk-4.0.4.3_Patch_0001/tl_ble_sdk/vendor/acl_connection_demo/app.c
+@@ -30,6 +30,7 @@
+ #include "app_att.h"
+ #include "app_ui.h"
+ 
++#include "pwm_test.h"
+ 
+ _attribute_ble_data_retention_ int central_smp_pending = 0; // SMP: security & encryption;
+ 
+@@ -38,7 +39,7 @@ _attribute_ble_data_retention_ int central_smp_pending = 0; // SMP: security & e
+  * @brief   BLE Advertising data
+  */
+ const u8 tbl_advData[] = {
+-    11,
++    12,
+     DT_COMPLETE_LOCAL_NAME,
+     'm',
+     'u',
+@@ -50,6 +51,7 @@ const u8 tbl_advData[] = {
+     'o',
+     'n',
+     'n',
++    '0',
+     2,
+     DT_FLAGS,
+     0x05, // BLE limited discoverable mode and BR/EDR not supported
+@@ -69,7 +71,7 @@ const u8 tbl_advData[] = {
+  * @brief   BLE Scan Response Packet data
+  */
+ const u8 tbl_scanRsp[] = {
+-    11,
++    12,
+     DT_COMPLETE_LOCAL_NAME,
+     'm',
+     'u',
+@@ -81,6 +83,7 @@ const u8 tbl_scanRsp[] = {
+     'o',
+     'n',
+     'n',
++    '0',
+ };
+ 
+ 
+@@ -705,6 +708,8 @@ _attribute_no_inline_ void user_init_normal(void)
+     u8 mac_public[6];
+     u8 mac_random_static[6];
+ 
++    write_mac_to_flash();
++
+     blc_initMacAddress(flash_sector_mac_address, mac_public, mac_random_static);
+ 
+ 
+diff --git a/tl_ble_sdk-4.0.4.3_Patch_0001/tl_ble_sdk/vendor/acl_connection_demo/app_att.c b/tl_ble_sdk-4.0.4.3_Patch_0001/tl_ble_sdk/vendor/acl_connection_demo/app_att.c
+index 2b17d985c..c7933487a 100644
+--- a/tl_ble_sdk-4.0.4.3_Patch_0001/tl_ble_sdk/vendor/acl_connection_demo/app_att.c
++++ b/tl_ble_sdk-4.0.4.3_Patch_0001/tl_ble_sdk/vendor/acl_connection_demo/app_att.c
+@@ -29,6 +29,7 @@
+ #include "app_att.h"
+ #include "app_ui.h"
+ 
++#include "pwm_test.h"
+ ////////////////////////////////////////// peripheral-role ATT service concerned ///////////////////////////////////////////////
+ typedef struct
+ {
+@@ -42,6 +43,7 @@ typedef struct
+     u16 timeout;
+ } gap_periConnectParams_t;
+ 
++
+ static const u16 clientCharacterCfgUUID = GATT_UUID_CLIENT_CHAR_CFG;
+ 
+ static const u16 extReportRefUUID = GATT_UUID_EXT_REPORT_REF;
+@@ -273,6 +275,12 @@ _attribute_ble_data_retention_ static u8 my_OtaData            = 0x00;
+ _attribute_ble_data_retention_ static u8 my_OtaDataCCC[2]      = {0, 0};
+ static const u8                          my_OtaName[]          = {'O', 'T', 'A'};
+ 
++//////////////////////// PWM //////////////////////////////////
++static const u8                          my_PwmServiceUUID[16] = WRAPPING_BRACES(TELINK_PWM_UUID_SERVICE);
++static const u8                          my_PwmUUID[16]        = WRAPPING_BRACES(TELINK_SPP_DATA_PWM);
++_attribute_ble_data_retention_ static u8 my_PwmData            = 0x00;
++_attribute_ble_data_retention_ static u8 my_PwmDataCCC[2]      = {0, 0};
++static const u8                          my_PwmName[]          = {'P', 'W', 'M'};
+ 
+ // Include attribute (Battery service)
+ static const u16 include[3] = {BATT_PS_H, BATT_LEVEL_INPUT_CCB_H, SERVICE_UUID_BATTERY};
+@@ -423,6 +431,13 @@ static const u8 my_OtaCharVal[19] = {
+     TELINK_SPP_DATA_OTA,
+ };
+ 
++static const u8 my_PwmCharVal[19] = {
++    CHAR_PROP_READ | CHAR_PROP_WRITE_WITHOUT_RSP | CHAR_PROP_NOTIFY,
++    U16_LO(PWM_CMD_OUT_DP_H),
++    U16_HI(PWM_CMD_OUT_DP_H),
++    TELINK_SPP_DATA_PWM,
++};
++
+ int spp_onReceiveData(u16 connHandle, ble_rf_packet_att_write_t *p)
+ {
+     (void)connHandle; //unused, remove warning
+@@ -431,6 +446,19 @@ int spp_onReceiveData(u16 connHandle, ble_rf_packet_att_write_t *p)
+     return 0;
+ }
+ 
++
++int pwm_onReceiveData(u16 connHandle, ble_rf_packet_att_write_t *p)
++{
++    (void)connHandle; //unused, remove warning
++    (void)p;          //unused, remove warning
++
++    u16 key_code = p->value;
++    printf( "[APP][PWM] PWM Update value %d \r\n", key_code);
++    pwm_test(key_code);
++
++    return 0;
++}
++
+ // TM : to modify
+ static const attribute_t my_Attributes[] = {
+ 
+@@ -539,6 +567,14 @@ static const attribute_t my_Attributes[] = {
+     {0,                                     ATT_PERMISSIONS_RDWR,  16, sizeof(my_OtaData),                        (u8 *)(size_t)(&my_OtaUUID),                     (&my_OtaData),                                     &otaWrite,                                    NULL}, //value
+     {0,                                     ATT_PERMISSIONS_RDWR,  2,  sizeof(my_OtaDataCCC),                     (u8 *)(size_t)(&clientCharacterCfgUUID),         (u8 *)(my_OtaDataCCC),                             0,                                            0   }, //value
+     {0,                                     ATT_PERMISSIONS_READ,  2,  sizeof(my_OtaName),                        (u8 *)(size_t)(&userdesc_UUID),                  (u8 *)(size_t)(my_OtaName),                        0,                                            0   },
++
++
++    // 003a - 003d
++    {5,                                     ATT_PERMISSIONS_READ,  2,  16,                                        (u8 *)(size_t)(&my_primaryServiceUUID),          (u8 *)(size_t)(&my_PwmServiceUUID),                0,                                            0   },
++    {0,                                     ATT_PERMISSIONS_READ,  2,  sizeof(my_PwmCharVal),                     (u8 *)(size_t)(&my_characterUUID),               (u8 *)(size_t)(my_PwmCharVal),                     0,                                            0   }, //prop
++    {0,                                     ATT_PERMISSIONS_RDWR,  16, sizeof(my_PwmData),                        (u8 *)(size_t)(&my_PwmUUID),                     (&my_PwmData),                                     (att_readwrite_callback_t)&pwm_onReceiveData, 0   }, //value
++    {0,                                     ATT_PERMISSIONS_RDWR,  2,  sizeof(my_PwmDataCCC),                     (u8 *)(size_t)(&clientCharacterCfgUUID),         (u8 *)(my_PwmDataCCC),                             0,                                            0   }, //value
++    {0,                                     ATT_PERMISSIONS_READ,  2,  sizeof(my_PwmName),                        (u8 *)(size_t)(&userdesc_UUID),                  (u8 *)(size_t)(my_PwmName),                        0,                                            0   },
+ };
+ 
+ /**
+diff --git a/tl_ble_sdk-4.0.4.3_Patch_0001/tl_ble_sdk/vendor/acl_connection_demo/app_att.h b/tl_ble_sdk-4.0.4.3_Patch_0001/tl_ble_sdk/vendor/acl_connection_demo/app_att.h
+index ad8d32cf3..26e18fb9b 100644
+--- a/tl_ble_sdk-4.0.4.3_Patch_0001/tl_ble_sdk/vendor/acl_connection_demo/app_att.h
++++ b/tl_ble_sdk-4.0.4.3_Patch_0001/tl_ble_sdk/vendor/acl_connection_demo/app_att.h
+@@ -139,6 +139,13 @@ typedef enum
+     OTA_CMD_OUT_CCB_H,  //UUID: 2902,   VALUE: my_OtaDataCCC
+     OTA_CMD_OUT_DESC_H, //UUID: 2901,   VALUE: otaName
+ 
++    //// pwm ////
++    /**********************************************************************************************/
++    PWM_PS_H,           //UUID: 2800,   VALUE: telink ota service uuid
++    PWM_CMD_OUT_CD_H,   //UUID: 2803,   VALUE:              Prop: read | write_without_rsp
++    PWM_CMD_OUT_DP_H,   //UUID: telink PWM uuid,  VALUE: PWMData
++    PWM_CMD_OUT_CCB_H,  //UUID: 2902,   VALUE: my_OtaDataCCC
++    PWM_CMD_OUT_DESC_H, //UUID: 2901,   VALUE: otaName
+ 
+     ATT_END_H,
+ 
+diff --git a/tl_ble_sdk-4.0.4.3_Patch_0001/tl_ble_sdk/vendor/acl_connection_demo/app_config.h b/tl_ble_sdk-4.0.4.3_Patch_0001/tl_ble_sdk/vendor/acl_connection_demo/app_config.h
+index 1509b070a..ee3050e56 100644
+--- a/tl_ble_sdk-4.0.4.3_Patch_0001/tl_ble_sdk/vendor/acl_connection_demo/app_config.h
++++ b/tl_ble_sdk-4.0.4.3_Patch_0001/tl_ble_sdk/vendor/acl_connection_demo/app_config.h
+@@ -26,16 +26,16 @@
+ #include "config.h"
+ 
+ 
+-#define ACL_CENTRAL_MAX_NUM 4 // ACL central maximum number
+-#define ACL_PERIPHR_MAX_NUM 4 // ACL peripheral maximum number
++#define ACL_CENTRAL_MAX_NUM 0 // ACL central maximum number
++#define ACL_PERIPHR_MAX_NUM 1 // ACL peripheral maximum number
+ 
+ ///////////////////////// Feature Configuration////////////////////////////////////////////////
+-#define ACL_PERIPHR_SMP_ENABLE        1 //1 for smp,  0 no security
+-#define ACL_CENTRAL_SMP_ENABLE        1 //1 for smp,  0 no security
++#define ACL_PERIPHR_SMP_ENABLE        0 //1 for smp,  0 no security
++#define ACL_CENTRAL_SMP_ENABLE        0 //1 for smp,  0 no security
+ #define ACL_CENTRAL_SIMPLE_SDP_ENABLE 1 //simple service discovery for ACL central
+ #define BLE_OTA_SERVER_ENABLE         1
+ 
+-#define BLE_APP_PM_ENABLE             1
++#define BLE_APP_PM_ENABLE             0
+ 
+ #define BATT_CHECK_ENABLE             0
+ 
+@@ -118,5 +118,12 @@
+ 
+ #endif
+ 
++#define PWM_PCLK_SPEED 12000000 //pwm clock 12M.
++#define PWM_32K_SPEED  32000    //pwm 32K
++#define PWM_PIN (GPIO_FC_PB3)
++#define PWM_ID  PWM0_ID
++#define PWM_FUNC PWM0
++
++
+ 
+ #include "../common/default_config.h"
+
+diff --git a/tl_ble_sdk-4.0.4.3_Patch_0001/tl_ble_sdk/vendor/acl_connection_demo/pwm_test.c b/tl_ble_sdk-4.0.4.3_Patch_0001/tl_ble_sdk/vendor/acl_connection_demo/pwm_test.c
+new file mode 100644
+index 000000000..9be90967a
+--- /dev/null
++++ b/tl_ble_sdk-4.0.4.3_Patch_0001/tl_ble_sdk/vendor/acl_connection_demo/pwm_test.c
+@@ -0,0 +1,79 @@
++/********************************************************************************************************
++ * @file    pwm_test.c
++ *
++ * @brief   This is the source file for BLE SDK
++ *
++ * @author  BLE GROUP
++ * @date    06,2025
++ *
++ * @par     Copyright (c) 2022, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
++ *
++ *          Licensed under the Apache License, Version 2.0 (the "License");
++ *          you may not use this file except in compliance with the License.
++ *          You may obtain a copy of the License at
++ *
++ *              http://www.apache.org/licenses/LICENSE-2.0
++ *
++ *          Unless required by applicable law or agreed to in writing, software
++ *          distributed under the License is distributed on an "AS IS" BASIS,
++ *          WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ *          See the License for the specific language governing permissions and
++ *          limitations under the License.
++ *
++ *******************************************************************************************************/
++#include "tl_common.h"
++#include "drivers.h"
++#include "stack/ble/ble.h"
++#include "app.h"
++#include "app_config.h"
++
++// PWM clock enums
++enum pwm_clock
++{
++    CLOCK_PWM_CLOCK_1S  = PWM_PCLK_SPEED,
++    CLOCK_PWM_CLOCK_1MS = (CLOCK_PWM_CLOCK_1S / 1000),
++    CLOCK_PWM_CLOCK_1US = (CLOCK_PWM_CLOCK_1S / 1000000),
++};
++
++#define MAC_ADDR_FLASH_SECTOR  0x1FF000  
++
++unsigned char mac_addr[6] = { 0x00, 0x22, 0x33, 0x44, 0x55, 0x66 };  
++
++void write_mac_to_flash(void) {
++    
++    flash_erase_sector(MAC_ADDR_FLASH_SECTOR);
++
++    flash_write_page(MAC_ADDR_FLASH_SECTOR, sizeof(mac_addr), mac_addr);
++}
++
++void pwm_test(u8 key_code){
++    if (key_code == 1) {
++        printf( "[APP][PWM] PWM Enter\r\n");
++        
++        gpio_function_en(PWM_PIN);     
++        gpio_output_en(PWM_PIN);                     
++        gpio_input_dis(PWM_PIN);
++        
++        pwm_set_pin(PWM_PIN,PWM0);          
++        pwm_set_pwm0_mode(PWM_NORMAL_MODE);
++       
++        pwm_set_clk((unsigned char)(sys_clk.pclk * 1000 * 1000 / PWM_PCLK_SPEED - 1));
++
++        pwm_set_tcmp(PWM_ID, 100 * CLOCK_PWM_CLOCK_1US);
++
++        pwm_set_tmax(PWM_ID, 100 * CLOCK_PWM_CLOCK_1US);
++        pwm_start(PWM_PIN);  
++    }
++    else{
++        pwm_stop(PWM_PIN);  
++    }
++}
+\ No newline at end of file
+diff --git a/tl_ble_sdk-4.0.4.3_Patch_0001/tl_ble_sdk/vendor/acl_connection_demo/pwm_test.h b/tl_ble_sdk-4.0.4.3_Patch_0001/tl_ble_sdk/vendor/acl_connection_demo/pwm_test.h
+new file mode 100644
+index 000000000..12996bc4a
+--- /dev/null
++++ b/tl_ble_sdk-4.0.4.3_Patch_0001/tl_ble_sdk/vendor/acl_connection_demo/pwm_test.h
+@@ -0,0 +1,29 @@
++/********************************************************************************************************
++ * @file    pwm_test.h
++ *
++ * @brief   This is the header file for BLE SDK
++ *
++ * @author  BLE GROUP
++ * @date    06,2025
++ *
++ * @par     Copyright (c) 2022, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
++ *
++ *          Licensed under the Apache License, Version 2.0 (the "License");
++ *          you may not use this file except in compliance with the License.
++ *          You may obtain a copy of the License at
++ *
++ *              http://www.apache.org/licenses/LICENSE-2.0
++ *
++ *          Unless required by applicable law or agreed to in writing, software
++ *          distributed under the License is distributed on an "AS IS" BASIS,
++ *          WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ *          See the License for the specific language governing permissions and
++ *          limitations under the License.
++ *
++ *******************************************************************************************************/
++#ifndef PWM_TEST_H_
++#define PWM_TEST_H_
++
++void pwm_test(u8 key_code);
++void write_mac_to_flash(void);
++#endif
+\ No newline at end of file
