@@ -31,10 +31,11 @@
 #include "app_ui.h"
 
 #include "pwm_test.h"
-
+bool conn_stat = true;
+u32 rec_count_all = 0;
+u32 rec_count_high = 0;
+u32 rec_count_low = 0;
 _attribute_ble_data_retention_ int central_smp_pending = 0; // SMP: security & encryption;
-
-
 /**
  * @brief   BLE Advertising data
  */
@@ -51,7 +52,7 @@ const u8 tbl_advData[] = {
     'o',
     'n',
     'n',
-    '0',
+    '4',
     2,
     DT_FLAGS,
     0x05, // BLE limited discoverable mode and BR/EDR not supported
@@ -83,7 +84,7 @@ const u8 tbl_scanRsp[] = {
     'o',
     'n',
     'n',
-    '0',
+    '4',
 };
 
 
@@ -218,7 +219,7 @@ int app_disconnect_event_handle(u8 *p)
 {
     hci_disconnectionCompleteEvt_t *pDisConn = (hci_disconnectionCompleteEvt_t *)p;
     tlkapi_send_string_data(APP_CONTR_EVT_LOG_EN, "[APP][EVT] disconnect event", &pDisConn->connHandle, 3);
-
+    conn_stat = false;
     //terminate reason
     if (pDisConn->reason == HCI_ERR_CONN_TIMEOUT) {                 //connection timeout
 
@@ -247,7 +248,7 @@ int app_disconnect_event_handle(u8 *p)
 
     dev_char_info_delete_by_connhandle(pDisConn->connHandle);
 
-
+    
     return 0;
 }
 
@@ -647,7 +648,14 @@ void app_flash_protection_operation(u8 flash_op_evt, u32 op_addr_begin, u32 op_a
 
 #endif
 
-
+_attribute_no_inline_ void user_init_normal1(void){
+    random_generator_init();
+    gpio_function_en(PWM_PIN);
+    gpio_output_en(PWM_PIN);
+    gpio_function_en(TEST_GPIO);
+    gpio_output_en(TEST_GPIO);
+    gpio_input_dis(TEST_GPIO);       // 禁用输入
+}
 ///////////////////////////////////////////
 
 /**
@@ -730,7 +738,7 @@ _attribute_no_inline_ void user_init_normal(void)
     blc_ll_initAclCentralRole_module();
     blc_ll_initAclPeriphrRole_module();
 
-
+    blc_ll_initChannelSelectionAlgorithm_2_feature();
     blc_ll_setMaxConnectionNumber(ACL_CENTRAL_MAX_NUM, ACL_PERIPHR_MAX_NUM);
 
     blc_ll_setAclConnMaxOctetsNumber(ACL_CONN_MAX_RX_OCTETS, ACL_CENTRAL_MAX_TX_OCTETS, ACL_PERIPHR_MAX_TX_OCTETS);
@@ -850,7 +858,7 @@ _attribute_no_inline_ void user_init_normal(void)
     blc_ll_setScanParameter(SCAN_TYPE_PASSIVE, SCAN_INTERVAL_100MS, SCAN_WINDOW_50MS, OWN_ADDRESS_PUBLIC, SCAN_FP_ALLOW_ADV_ANY);
     blc_ll_setScanEnable(BLC_SCAN_ENABLE, DUP_FILTER_DISABLE);
 
-    rf_set_power_level_index(RF_POWER_P3dBm);
+    rf_set_power_level_index(RF_POWER_INDEX_P11p33dBm);
 
 #if (BLE_APP_PM_ENABLE)
     blc_ll_initPowerManagement_module();
@@ -865,7 +873,12 @@ _attribute_no_inline_ void user_init_normal(void)
 
     blc_ota_initOtaServer_module();
 #endif
-
+    gpio_function_en(PWM_PIN);
+    gpio_output_en(PWM_PIN);
+    gpio_function_en(TEST_GPIO);
+    gpio_output_en(TEST_GPIO);
+    gpio_input_dis(TEST_GPIO);       // 禁用输入
+    trng_init();
     tlkapi_send_string_data(APP_LOG_EN, "[APP][INI] acl connection demo init", 0, 0);
     ////////////////////////////////////////////////////////////////////////////////////////////////
 }
@@ -906,7 +919,6 @@ void app_process_power_management(void)
 /////////////////////////////////////////////////////////////////////
 // main loop flow
 /////////////////////////////////////////////////////////////////////
-
 /**
  * @brief     BLE main idle loop
  * @param[in]  none.
@@ -916,7 +928,14 @@ int main_idle_loop(void)
 {
     ////////////////////////////////////// BLE entry /////////////////////////////////
     blc_sdk_main_loop();
-
+    if(!conn_stat){
+        printf("rec_count_all: %d, rec_count_high: %d, rec_count_low: %d\n",
+           rec_count_all, rec_count_high, rec_count_low);
+        rec_count_all = 0;
+        rec_count_high = 0;
+        rec_count_low = 0;
+        conn_stat = true;
+    }
 
 ////////////////////////////////////// Debug entry /////////////////////////////////
 #if (TLKAPI_DEBUG_ENABLE)

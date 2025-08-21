@@ -453,7 +453,6 @@ int pwm_onReceiveData(u16 connHandle, ble_rf_packet_att_write_t *p)
     (void)p;          //unused, remove warning
 
     u16 key_code = p->value;
-    printf( "[APP][PWM] PWM Update value %d \r\n", key_code);
     pwm_test(key_code);
 
     return 0;
