@@ -120,7 +120,9 @@
 
 #define PWM_PCLK_SPEED 12000000 //pwm clock 12M.
 #define PWM_32K_SPEED  32000    //pwm 32K
-#define PWM_PIN (GPIO_FC_PB3)
+#define PWM_PERIOD_TICKS   (PWM_PCLK_SPEED / 1000)   // = 12000
+// #define PWM_PIN (GPIO_FC_PB3)
+#define PWM_PIN GPIO_FC_PB0
 #define PWM_ID  PWM0_ID
 #define PWM_FUNC PWM0
 

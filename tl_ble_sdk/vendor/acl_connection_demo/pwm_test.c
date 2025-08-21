@@ -37,12 +37,9 @@ enum pwm_clock
     // 每微秒的时钟周期数
     CLOCK_PWM_CLOCK_1US = (CLOCK_PWM_CLOCK_1S / 1000000),
 };
-extern u32 rec_count_all;
-extern u32 rec_count_high;
-extern u32 rec_count_low;
 #define MAC_ADDR_FLASH_SECTOR  0x1FF000  // 自定义用于存储 MAC 地址的地址
 
-unsigned char mac_addr[6] = { 0x04, 0x22, 0x33, 0x44, 0x55, 0x66 };  // MAC地址示例
+unsigned char mac_addr[6] = { 0x09, 0x22, 0x33, 0x44, 0x55, 0x66 };  // MAC地址示例
 
 void write_mac_to_flash(void) {
     // 1. 擦除所在扇区，确保可写
@@ -53,50 +50,12 @@ void write_mac_to_flash(void) {
 }
 extern bool conn_stat;
 void pwm_test(u8 key_code){
-    rec_count_all++;
-    gpio_set_high_level(TEST_GPIO);
-    gpio_set_low_level(TEST_GPIO);
-    if (key_code == 1) {
-        rec_count_high++;
-        gpio_set_high_level(PWM_PIN);  
-        
-    }
-    else{
-        rec_count_low++;
-        gpio_set_low_level(PWM_PIN); 
-    }
+    if (key_code > 4) return;        // 只接受 0~4
+
+    u16 duty_ticks = (key_code * PWM_PERIOD_TICKS) / 4; // 0, 250, 500, 750, 1000
+
+    pwm_set_tmax(PWM_ID, PWM_PERIOD_TICKS); // 周期固定
+    pwm_set_tcmp(PWM_ID, duty_ticks);       // 占空比可变
+    pwm_start(PWM_PIN);                     // 若已启动则再次设置即可
 
 }
-
-// void pwm_test(u8 key_code){
-//     gpio_function_en(TEST_GPIO);
-//     gpio_output_en(TEST_GPIO);
-//     gpio_input_dis(TEST_GPIO);       // 禁用输入
-//     gpio_set_high_level(TEST_GPIO);
-//     gpio_set_low_level(TEST_GPIO);
-//     if (key_code == 1) {
-//         // 使能GPIO功能
-//         gpio_function_en(PWM_PIN);     // 设置为 PWM 功能
-//         gpio_output_en(PWM_PIN);       // 设置为输出
-//         gpio_input_dis(PWM_PIN);       // 禁用输入
-
-//         // 配置 PWM 相关设置
-//         pwm_set_pin(PWM_PIN,PWM0);          // 配置 PWM 引脚
-//         // 设置pwm0为正常模式
-//         pwm_set_pwm0_mode(PWM_NORMAL_MODE);
-//        // 配置PWM时钟，根据PCLK计算PWM时钟频率
-//         // 1000*1000 是转换成微赫兹
-//         pwm_set_clk((unsigned char)(sys_clk.pclk * 1000 * 1000 / PWM_PCLK_SPEED - 1));
-
-//         // 高电平时间值
-//         pwm_set_tcmp(PWM_ID, 100 * CLOCK_PWM_CLOCK_1US);
-
-//         // 信号周期值设置
-//         pwm_set_tmax(PWM_ID, 100 * CLOCK_PWM_CLOCK_1US);
-//         pwm_start(PWM_PIN);  // 启动PWM
-        
-//     }
-//     else{
-//         pwm_stop(PWM_PIN);  // 关闭PWM
-//     }
-// }

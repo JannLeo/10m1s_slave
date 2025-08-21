@@ -31,7 +31,6 @@
 #include "app_ui.h"
 
 #include "pwm_test.h"
-bool conn_stat = true;
 u32 rec_count_all = 0;
 u32 rec_count_high = 0;
 u32 rec_count_low = 0;
@@ -52,7 +51,7 @@ const u8 tbl_advData[] = {
     'o',
     'n',
     'n',
-    '4',
+    '9',
     2,
     DT_FLAGS,
     0x05, // BLE limited discoverable mode and BR/EDR not supported
@@ -84,7 +83,7 @@ const u8 tbl_scanRsp[] = {
     'o',
     'n',
     'n',
-    '4',
+    '9',
 };
 
 
@@ -219,7 +218,6 @@ int app_disconnect_event_handle(u8 *p)
 {
     hci_disconnectionCompleteEvt_t *pDisConn = (hci_disconnectionCompleteEvt_t *)p;
     tlkapi_send_string_data(APP_CONTR_EVT_LOG_EN, "[APP][EVT] disconnect event", &pDisConn->connHandle, 3);
-    conn_stat = false;
     //terminate reason
     if (pDisConn->reason == HCI_ERR_CONN_TIMEOUT) {                 //connection timeout
 
@@ -875,10 +873,15 @@ _attribute_no_inline_ void user_init_normal(void)
 #endif
     gpio_function_en(PWM_PIN);
     gpio_output_en(PWM_PIN);
+    gpio_input_dis(PWM_PIN);
+
+    pwm_set_pin(PWM_PIN, PWM0);               // 绑定引脚到 PWM0
+    pwm_set_pwm0_mode(PWM_NORMAL_MODE);       // 普通 PWM 模式
+    pwm_set_clk((sys_clk.pclk * 1000000) / PWM_PCLK_SPEED - 1); // 12 MHz / 12 MHz = 1 MHz 计数频率
+
     gpio_function_en(TEST_GPIO);
     gpio_output_en(TEST_GPIO);
     gpio_input_dis(TEST_GPIO);       // 禁用输入
-    trng_init();
     tlkapi_send_string_data(APP_LOG_EN, "[APP][INI] acl connection demo init", 0, 0);
     ////////////////////////////////////////////////////////////////////////////////////////////////
 }
@@ -928,15 +931,6 @@ int main_idle_loop(void)
 {
     ////////////////////////////////////// BLE entry /////////////////////////////////
     blc_sdk_main_loop();
-    if(!conn_stat){
-        printf("rec_count_all: %d, rec_count_high: %d, rec_count_low: %d\n",
-           rec_count_all, rec_count_high, rec_count_low);
-        rec_count_all = 0;
-        rec_count_high = 0;
-        rec_count_low = 0;
-        conn_stat = true;
-    }
-
 ////////////////////////////////////// Debug entry /////////////////////////////////
 #if (TLKAPI_DEBUG_ENABLE)
     tlkapi_debug_handler();
