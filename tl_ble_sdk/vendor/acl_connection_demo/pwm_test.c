@@ -39,7 +39,7 @@ enum pwm_clock
 };
 #define MAC_ADDR_FLASH_SECTOR  0x1FF000  // 自定义用于存储 MAC 地址的地址
 
-unsigned char mac_addr[6] = { 0x09, 0x22, 0x33, 0x44, 0x55, 0x66 };  // MAC地址示例
+unsigned char mac_addr[6] = { DEVICE_INDEX, 0x22, 0x33, 0x44, 0x55, 0x66 };  // MAC地址示例
 
 void write_mac_to_flash(void) {
     // 1. 擦除所在扇区，确保可写

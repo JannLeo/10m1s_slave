@@ -25,6 +25,7 @@
 
 #include "config.h"
 
+#define DEVICE_INDEX   9  // 这里改 0~9
 
 #define ACL_CENTRAL_MAX_NUM 0 // ACL central maximum number
 #define ACL_PERIPHR_MAX_NUM 1 // ACL peripheral maximum number
