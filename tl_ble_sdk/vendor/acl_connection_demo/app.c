@@ -29,7 +29,7 @@
 #include "app_buffer.h"
 #include "app_att.h"
 #include "app_ui.h"
-
+#include "led_app_dma.h"
 #include "pwm_test.h"
 bool conn_stat = true;
 u32 rec_count_all = 0;
@@ -648,14 +648,6 @@ void app_flash_protection_operation(u8 flash_op_evt, u32 op_addr_begin, u32 op_a
 
 #endif
 
-_attribute_no_inline_ void user_init_normal1(void){
-    random_generator_init();
-    gpio_function_en(PWM_PIN);
-    gpio_output_en(PWM_PIN);
-    gpio_function_en(TEST_GPIO);
-    gpio_output_en(TEST_GPIO);
-    gpio_input_dis(TEST_GPIO);       // 禁用输入
-}
 ///////////////////////////////////////////
 
 /**
@@ -873,12 +865,7 @@ _attribute_no_inline_ void user_init_normal(void)
 
     blc_ota_initOtaServer_module();
 #endif
-    gpio_function_en(PWM_PIN);
-    gpio_output_en(PWM_PIN);
-    gpio_function_en(TEST_GPIO);
-    gpio_output_en(TEST_GPIO);
-    gpio_input_dis(TEST_GPIO);       // 禁用输入
-    trng_init();
+    user_init_led_app();
     tlkapi_send_string_data(APP_LOG_EN, "[APP][INI] acl connection demo init", 0, 0);
     ////////////////////////////////////////////////////////////////////////////////////////////////
 }

@@ -25,7 +25,7 @@
 
 #include "config.h"
 
-#define DEVICE_INDEX   9
+#define DEVICE_INDEX   0
 #define ACL_CENTRAL_MAX_NUM 0 // ACL central maximum number
 #define ACL_PERIPHR_MAX_NUM 1 // ACL peripheral maximum number
 
@@ -118,13 +118,14 @@
 
 #endif
 
-#define PWM_PCLK_SPEED 12000000 //pwm clock 12M.
-#define PWM_32K_SPEED  32000    //pwm 32K
-#define PWM_PIN (GPIO_FC_PB3)
-#define PWM_ID  PWM0_ID
-#define PWM_FUNC PWM0
 
-#define TEST_GPIO (GPIO_FC_PA3)
 
+#define SPI_NDMA_MODE 1        //spi master and slave demo without DMA
+#define SPI_DMA_MODE  2        //spi master and slave demo with DMA
+#if !defined(MCU_CORE_B92)
+    #define SPI_DMA_LLP_MODE 3 //spi rx with DMA chain transmission
+#endif
+
+#define SPI_MODE SPI_DMA_MODE
 
 #include "../common/default_config.h"
