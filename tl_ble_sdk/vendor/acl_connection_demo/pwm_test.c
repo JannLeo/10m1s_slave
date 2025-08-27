@@ -37,9 +37,6 @@ enum pwm_clock
     // 每微秒的时钟周期数
     CLOCK_PWM_CLOCK_1US = (CLOCK_PWM_CLOCK_1S / 1000000),
 };
-extern u32 rec_count_all;
-extern u32 rec_count_high;
-extern u32 rec_count_low;
 #define MAC_ADDR_FLASH_SECTOR  0x1FF000  // 自定义用于存储 MAC 地址的地址
 
 unsigned char mac_addr[6] = { DEVICE_INDEX, 0x22, 0x33, 0x44, 0x55, 0x66 };  // MAC地址示例
@@ -53,16 +50,13 @@ void write_mac_to_flash(void) {
 }
 extern bool conn_stat;
 void pwm_test(u8 key_code){
-    rec_count_all++;
     gpio_set_high_level(TEST_GPIO);
     gpio_set_low_level(TEST_GPIO);
     if (key_code == 1) {
-        rec_count_high++;
         gpio_set_high_level(PWM_PIN);  
         
     }
     else{
-        rec_count_low++;
         gpio_set_low_level(PWM_PIN); 
     }
 

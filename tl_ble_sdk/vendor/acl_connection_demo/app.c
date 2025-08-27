@@ -928,14 +928,6 @@ int main_idle_loop(void)
 {
     ////////////////////////////////////// BLE entry /////////////////////////////////
     blc_sdk_main_loop();
-    if(!conn_stat){
-        printf("rec_count_all: %d, rec_count_high: %d, rec_count_low: %d\n",
-           rec_count_all, rec_count_high, rec_count_low);
-        rec_count_all = 0;
-        rec_count_high = 0;
-        rec_count_low = 0;
-        conn_stat = true;
-    }
 
 ////////////////////////////////////// Debug entry /////////////////////////////////
 #if (TLKAPI_DEBUG_ENABLE)
